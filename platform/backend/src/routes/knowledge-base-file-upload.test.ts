@@ -2,7 +2,11 @@ import { eq } from "drizzle-orm";
 import JSZip from "jszip";
 import db, { schema } from "@/database";
 import * as fileProcessor from "@/knowledge-base/connectors/file-upload/file-processor";
-import { KbUploadedFileModel, KnowledgeBaseConnectorModel } from "@/models";
+import {
+  KbDocumentModel,
+  KbUploadedFileModel,
+  KnowledgeBaseConnectorModel,
+} from "@/models";
 import type { FastifyInstanceWithZod } from "@/server";
 import { createFastifyInstance } from "@/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "@/test";
@@ -468,6 +472,67 @@ describe("connector file upload routes", () => {
       expect(file).toHaveProperty("createdAt");
     });
 
+    test("returns embeddingError from the associated document", async () => {
+      const { payload } = buildJsonBody([
+        {
+          name: "fail.txt",
+          content: Buffer.from("Failing content"),
+          mimeType: "text/plain",
+        },
+      ]);
+      const uploadResponse = await app.inject({
+        method: "POST",
+        url: `/api/connectors/${fileUploadConnector.id}/files`,
+        payload,
+      });
+      const fileId = uploadResponse.json().results[0].fileId;
+
+      await KbDocumentModel.create({
+        connectorId: fileUploadConnector.id,
+        organizationId,
+        sourceId: fileId,
+        title: "fail.txt",
+        content: "Failing content",
+        contentHash: "fail-hash",
+        embeddingStatus: "failed",
+        embeddingError: "api_unauthorized",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/connectors/${fileUploadConnector.id}/files/${fileId}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().embeddingStatus).toBe("failed");
+      expect(response.json().embeddingError).toBe("api_unauthorized");
+    });
+
+    test("returns embeddingError null when no document exists yet", async () => {
+      const { payload } = buildJsonBody([
+        {
+          name: "nodoc.txt",
+          content: Buffer.from("Not yet embedded"),
+          mimeType: "text/plain",
+        },
+      ]);
+      const uploadResponse = await app.inject({
+        method: "POST",
+        url: `/api/connectors/${fileUploadConnector.id}/files`,
+        payload,
+      });
+      const fileId = uploadResponse.json().results[0].fileId;
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/connectors/${fileUploadConnector.id}/files/${fileId}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().embeddingStatus).toBe("pending");
+      expect(response.json().embeddingError).toBeNull();
+    });
+
     test("returns 404 when the file does not exist", async () => {
       const response = await app.inject({
         method: "GET",
@@ -519,6 +584,43 @@ describe("connector file upload routes", () => {
       expect(listBody.data[0]).toHaveProperty("id");
       expect(listBody.data[0]).toHaveProperty("contentHash");
       expect(listBody.data[0]).toHaveProperty("embeddingStatus");
+    });
+
+    test("includes embeddingError from associated document in each list item", async () => {
+      const { payload } = buildJsonBody([
+        {
+          name: "err-file.txt",
+          content: Buffer.from("Error content"),
+          mimeType: "text/plain",
+        },
+      ]);
+      const uploadResponse = await app.inject({
+        method: "POST",
+        url: `/api/connectors/${fileUploadConnector.id}/files`,
+        payload,
+      });
+      const fileId = uploadResponse.json().results[0].fileId;
+
+      await KbDocumentModel.create({
+        connectorId: fileUploadConnector.id,
+        organizationId,
+        sourceId: fileId,
+        title: "err-file.txt",
+        content: "Error content",
+        contentHash: "err-hash",
+        embeddingStatus: "failed",
+        embeddingError: "dimensions_mismatch",
+      });
+
+      const listResponse = await app.inject({
+        method: "GET",
+        url: `/api/connectors/${fileUploadConnector.id}/files`,
+      });
+
+      expect(listResponse.statusCode).toBe(200);
+      const item = listResponse.json().data[0];
+      expect(item.embeddingStatus).toBe("failed");
+      expect(item.embeddingError).toBe("dimensions_mismatch");
     });
   });
 

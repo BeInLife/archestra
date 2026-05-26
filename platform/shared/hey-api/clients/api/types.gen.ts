@@ -33876,6 +33876,7 @@ export type GetConnectorFilesResponses = {
             processingStatus: string;
             processingError: string | null;
             embeddingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+            embeddingError: 'api_unauthorized' | 'api_permission_denied' | 'api_bad_request' | 'api_not_found' | 'api_conflict' | 'api_unprocessable_entity' | 'api_rate_limit' | 'api_generic_error' | 'context_length_exceeded' | 'length_mismatch' | 'dimensions_mismatch' | 'unknown';
         }>;
         pagination: {
             currentPage: number;
@@ -34161,6 +34162,7 @@ export type GetConnectorFileResponses = {
         processingStatus: string;
         processingError: string | null;
         embeddingStatus: 'pending' | 'processing' | 'completed' | 'failed';
+        embeddingError: 'api_unauthorized' | 'api_permission_denied' | 'api_bad_request' | 'api_not_found' | 'api_conflict' | 'api_unprocessable_entity' | 'api_rate_limit' | 'api_generic_error' | 'context_length_exceeded' | 'length_mismatch' | 'dimensions_mismatch' | 'unknown';
     };
 };
 

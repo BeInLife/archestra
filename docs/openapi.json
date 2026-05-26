@@ -129246,6 +129246,24 @@
                               "completed",
                               "failed"
                             ]
+                          },
+                          "embeddingError": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "api_unauthorized",
+                              "api_permission_denied",
+                              "api_bad_request",
+                              "api_not_found",
+                              "api_conflict",
+                              "api_unprocessable_entity",
+                              "api_rate_limit",
+                              "api_generic_error",
+                              "context_length_exceeded",
+                              "length_mismatch",
+                              "dimensions_mismatch",
+                              "unknown"
+                            ]
                           }
                         },
                         "required": [
@@ -129258,7 +129276,8 @@
                           "createdAt",
                           "processingStatus",
                           "processingError",
-                          "embeddingStatus"
+                          "embeddingStatus",
+                          "embeddingError"
                         ],
                         "additionalProperties": false
                       }
@@ -129622,6 +129641,24 @@
                         "completed",
                         "failed"
                       ]
+                    },
+                    "embeddingError": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "api_unauthorized",
+                        "api_permission_denied",
+                        "api_bad_request",
+                        "api_not_found",
+                        "api_conflict",
+                        "api_unprocessable_entity",
+                        "api_rate_limit",
+                        "api_generic_error",
+                        "context_length_exceeded",
+                        "length_mismatch",
+                        "dimensions_mismatch",
+                        "unknown"
+                      ]
                     }
                   },
                   "required": [
@@ -129634,7 +129671,8 @@
                     "createdAt",
                     "processingStatus",
                     "processingError",
-                    "embeddingStatus"
+                    "embeddingStatus",
+                    "embeddingError"
                   ],
                   "additionalProperties": false
                 }

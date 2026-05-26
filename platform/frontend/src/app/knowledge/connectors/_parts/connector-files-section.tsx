@@ -10,7 +10,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -33,14 +33,55 @@ const ACCEPTED_EXTENSIONS =
   ".txt,.md,.csv,.json,.xml,.html,.htm,.pdf,.doc,.docx,.zip";
 const MAX_FILE_SIZE_MB = 10;
 
+function BadgeWithTooltip({
+  label,
+  variant,
+  isLoading,
+  tooltip,
+                          }: {
+  variant: VariantProps<typeof badgeVariants>['variant'];
+  label: string;
+  isLoading?: boolean;
+  tooltip?: string | null;
+}) {
+  if (tooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant={variant} className="capitalize text-xs cursor-help">
+            {isLoading && (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            )}
+            {label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return (
+    <Badge variant={variant} className="capitalize text-xs cursor-default">
+      {isLoading && (
+        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+      )}
+      {label}
+    </Badge>
+  )
+}
+
 function FileStatusBadge({
   processingStatus,
   embeddingStatus,
   processingError,
+  embeddingError,
 }: {
   processingStatus?: string;
-  embeddingStatus: string;
+  embeddingStatus: UploadedFile['embeddingStatus'];
   processingError?: string | null;
+  embeddingError?: UploadedFile['embeddingError'];
 }) {
   if (processingStatus && processingStatus !== "completed") {
     const variants = {
@@ -55,29 +96,23 @@ function FileStatusBadge({
       failed: "Processing Failed",
     };
 
-    const variant =
-      variants[processingStatus as keyof typeof variants] ?? "secondary";
-    const label =
-      labels[processingStatus as keyof typeof labels] ?? processingStatus;
+    const variant = variants[processingStatus as keyof typeof variants] ?? "secondary";
+    const label = labels[processingStatus as keyof typeof labels] ?? processingStatus;
 
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant={variant} className="capitalize text-xs cursor-help">
-            {processingStatus === "processing" && (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            )}
-            {label}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          {processingStatus === "failed" && processingError
+      <BadgeWithTooltip
+        variant={variant}
+        label={label}
+        variants={variant}
+        isLoading={processingStatus === "processing"}
+        tooltip={
+          processingStatus === "failed" && processingError
             ? processingError
             : processingStatus === "pending"
               ? "File is queued for text extraction"
-              : "Extracting text from file…"}
-        </TooltipContent>
-      </Tooltip>
+              : "Extracting text from file…"
+        }
+      />
     );
   }
 
@@ -93,20 +128,37 @@ function FileStatusBadge({
     pending: "Pending",
     processing: "Indexing…",
     failed: "Failed",
-  };
+  } as const;
+
+  const variant = variants[embeddingStatus] ?? "secondary";
+  const label = labels[embeddingStatus] ?? embeddingStatus;
+
+  const errorLabels: Record<UploadedFile['embeddingError'], string> = {
+    api_bad_request: "Model can't process data. Check uploaded file",
+    api_conflict: "Conflict happened. Try again", // I don't know when we can reach this, but present in OpenAI error codes, gotta support
+    api_generic_error: "API error",
+    api_not_found: "Model not found",
+    api_permission_denied: "Permission denied. Check API key",
+    api_rate_limit: "Too many requests. Try again",
+    api_unauthorized: "Unauthorized. Check API key",
+    api_unprocessable_entity: "Model can't process data. Check uploaded file",
+    dimensions_mismatch: "Model embedding dimensions are misconfigured",
+    context_length_exceeded: "Context length exceeded, probably model is misconfigured", // Error copy should be adjusted here IMO
+    length_mismatch: "API returned incorrect amount of results",
+    unknown: "Unknown error"
+  } as const;
 
   return (
-    <Badge
-      variant={
-        variants[embeddingStatus as keyof typeof variants] ?? "secondary"
+    <BadgeWithTooltip
+      label={label}
+      variant={variant}
+      isLoading={embeddingStatus === "processing"}
+      tooltip={
+        embeddingStatus === "failed"
+          ? errorLabels[embeddingError ?? "unknown"]
+          : null
       }
-      className="capitalize text-xs"
-    >
-      {embeddingStatus === "processing" && (
-        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-      )}
-      {labels[embeddingStatus as keyof typeof labels] ?? embeddingStatus}
-    </Badge>
+    />
   );
 }
 
@@ -125,6 +177,7 @@ function FileStatusCell({
       processingStatus={current.processingStatus}
       embeddingStatus={current.embeddingStatus}
       processingError={current.processingError}
+      embeddingError={current.embeddingError}
     />
   );
 }
